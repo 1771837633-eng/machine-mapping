@@ -1,0 +1,46 @@
+FeSe20211118_JJJ 试点审查，2026-10-18
+
+原实验：F:\Data_JiaJunJie\FeSe_LLL\FeSe\FeSe20211118_JJJ.pxp
+磁盘副本：pilot/input/FeSe20211118_JJJ.pxp（510998321 字节）
+SHA256：687cc1fa761490899e6d29b976085b0a359a82fa6bece23946e0c7a2b915f54b
+现场数据通过 Igor 原生导出，可能包含尚未写入磁盘 PXP 的状态；两者不混为一谈。
+
+确认的机械 mapping 候选组：参数表行 8–13（从 0 计数），ProcessFlag=1。
+A20211118121854   theta=0
+A20211118123854   theta=-3
+A20211118130449   theta=-6
+A20211118133047   theta=-9
+A20211118135051   theta=-12
+A20211118141230   theta=-15
+全部 phi=0、omega=0；处理后命名与角度表相符。
+这证明保存的标注一致性，不独立证明当时机械装置的真实位置。
+
+实质问题：
+1. 最后一条 ExperimentalNote 末尾为 0，与 theta=-15 及处理名 T150N 冲突。
+   已向用户询问，以实验记录/操作者确认为准。没有改写任何一方。
+2. 当前 root:PROCESS 积分区间 [-0.01,+0.01] eV 超过处理后能量上限 +0.0075 eV。
+   建议按物理目标选定覆盖内的区间；例如 ±5 meV 可用于技术试验，尚未采纳为科学参数。
+3. 原始 Note 的 ThetaX/ThetaY 均为 0，不能用它们替代本次机械 theta。
+   原始 Note 的 Excitation Energy=0 同样不能当作有效光子能量。
+4. 当前 PROCESS 参数：PhotonEnergy=6.994、WorkFunction=4.8、LatticeConstant=3.68；
+   Theta/Phi/Omega Offset 均为 0。这些是现场设定，未完成物理标定核实。
+
+数值核验：
+原始 6 个 Wave 均为 201×901；能量约 2.75–2.77 eV。
+处理后 6 个 Wave 均为 201×642；能量 -0.0125–+0.0075 eV。
+全部导出 Wave 均通过有限数值检查，完整统计和原始 Note 保存在 audit.json。
+首尾原始 CUT 的 Igor WaveStats 与 Python IBW 读取结果一致：
+  第一条：181101 点，总强度 15752892。
+  最后一条：181101 点，总强度 8918145。
+完整 PXP 的 igor2 读取失败（buffer is too small），没有把部分解析当成功。
+
+程序路径核验：
+Igor FunctionPath("KxKyImage_XJIOP") 返回：
+D:\igor\Igor Pro 9.0.5.1\Igor Pro 9 Folder\User Procedures\Xingjiang_IOP\Latest\00_ZWT_KxKyImage.ipf
+此路径使用实际 theta 表；旧 10XJZThetaPhiMapping 的 1° 循环不能代表此路径。
+当前 GetFS 源码仍有待专项审查的可疑项，包括能量中点重复使用 IntEstart、
+排序交换 Phi 使用 ii 索引；本次未修改全局安装代码，也未据此直接重跑科学拼图。
+
+本次变更：新增项目内的只读批量预检脚本；在 Igor 中执行了查询、统计和副本导出，
+增加 MMExport 导出路径；没有改写源角度表、原始 Wave、源 PXP 或安装程序。
+尚未交付：新数据自动加载、角度回写、完整动量拼图的一键流程。

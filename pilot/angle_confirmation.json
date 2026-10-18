@@ -1,0 +1,18 @@
+{
+  "confirmed_on": "2026-10-18",
+  "timezone": "Asia/Shanghai",
+  "source": "User reply in this Machine Mapping conversation",
+  "user_statement": "以角度表为准，最后一个是 −15°",
+  "question_context": "确认 A20211118121854 至 A20211118141230 六个 CUT 的 theta 序列；最后一条备注为 0，与表中 −15° 冲突。",
+  "table_sha256": "42365290b89346c15e2db3a495ea578292908712d563a863f0425b8e7e315a5b",
+  "confirmed_angles": [
+    {"cut": "A20211118121854", "theta": 0},
+    {"cut": "A20211118123854", "theta": -3},
+    {"cut": "A20211118130449", "theta": -6},
+    {"cut": "A20211118133047", "theta": -9},
+    {"cut": "A20211118135051", "theta": -12},
+    {"cut": "A20211118141230", "theta": -15}
+  ],
+  "preservation": "Retain original ExperimentalNote; resolve audit conflict without editing source experiment.",
+  "scope": "Angles only; does not confirm the integration window or physical calibration."
+}
