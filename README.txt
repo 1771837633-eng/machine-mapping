@@ -1,6 +1,7 @@
 Machine Mapping：机械扫描批量处理试点
 
 完整讨论进度、自动化方案、验收标准和待办见 PROGRESS.txt。
+首次接手先读 HANDOFF.txt；仓库后续每次提交须遵循 AGENTS.md 的交接要求。
 当前版本只实现预检；Igor 一键加载、标注、处理、拼图和保存入口尚待开发。
 
 当前实现：Igor 原生导出的参数表和 IBW -> 明确指定 CUT 顺序 ->
@@ -9,6 +10,9 @@ Machine Mapping：机械扫描批量处理试点
 
 运行目录：C:\Users\Administrator\Documents\pROCESS\Machine Mapping
 依赖：requirements.txt，已验证 Python 3.9 / igor2 0.5.12 / numpy 1.26.4。
+新环境安装：python -m pip install -r requirements.txt（先核对所用 Python 环境）。
+有本地试点导出后，可运行 python tools\verify_pilot.py，检查当前预检及确认保护。
+Igor 导出步骤和原生命令见 pilot/export_commands.igor.txt。
 
 本次复现命令（PowerShell 单行）：
 python src\prepare_mapping.py --table pilot\exports\original_parameters.tsv --exports pilot\exports --cuts A20211118121854 A20211118123854 A20211118130449 A20211118133047 A20211118135051 A20211118141230 --start 0 --step -3 --energy-window -0.01 0.01 --resolutions pilot\angle_confirmation.json --output pilot\results

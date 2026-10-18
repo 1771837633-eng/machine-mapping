@@ -12,6 +12,8 @@ Machine Mapping：讨论进度与实施计划
 远端仓库：https://github.com/1771837633-eng/machine-mapping.git
 所有后续 Machine Mapping 修改继续在该子项目中进行。
 审查原则见 AGENTS.md：独立核验前提、显式记录不确定性、保留原始数据和依据。
+用户追加的长期规则：以后每次 Git 都须让未读过聊天的智能体准确理解当前进展。
+接手入口为 HANDOFF.txt；此规则已写入 AGENTS.md，提交前必须维护记录并消除矛盾。
 
 二、当前方案
 
@@ -100,3 +102,15 @@ GetFS 源码的能量中点与排序索引存在可疑项，需要在项目内�
 pilot/input、pilot/exports、pilot/results 被 .gitignore 排除，
 不向仓库提交实验原始数据、完整 PXP、IBW 或派生强度数据。
 本仓库尚不能在全新环境中独立重放试点，须先准备 README.txt 说明的本地 Igor 导出。
+
+七、本次交接完善
+
+补充 HANDOFF.txt：用户目标、授权和确认、实际完成边界、运行环境、源码符号位置、
+数据对应关系、依赖缺失时的限制、验证依据、下一步顺序及 Git 交接规则。
+补充 pilot/export_commands.igor.txt，保存实际使用的导出与原生统计命令。
+补充 tools/verify_pilot.py，将此前交互执行的关键预检验证保存为可重复运行的检查。
+修正 pilot/review.txt 中“角度待确认”的旧状态，与已确认 -15° 的配置保持一致。
+实际执行 python tools/verify_pilot.py：8 组检查通过，覆盖六个 CUT/网格/统计、
+角度确认和原备注保留、积分越界、未确认冲突、范围内预检、倒序、无效输入保护及输入哈希不变。
+执行 git diff --check 通过；具体运行回执保存在本地忽略目录的 verification.json。
+本次没有新增 Igor 自动化功能，没有生成新的费米面。

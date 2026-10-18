@@ -1,0 +1,27 @@
+目的：供接手智能体复核原生导出路径；以下是 Igor 命令，不是 PowerShell。
+已于 2026-10-18 在用户打开的 FeSe20211118_JJJ 实验执行过对应导出和统计。
+当前实验状态可能变化，执行前先核对标题、Wave 与参数表，使用项目试验副本。
+确认目标导出目录已存在。现有导出优先保留；以下未加 /O，存在文件时会要求处理。
+重新导出后核对哈希和内容，不要自动改写 angle_confirmation.json 以绕过确认保护。
+
+1. 确认实际函数来源：
+Print FunctionPath("KxKyImage_XJIOP")
+
+2. 导出参数表（保留列顺序）：
+Save/J/W root:OriginalData:OriginalImage,root:OriginalData:Theta_Angle,root:OriginalData:Phi_Angle,root:OriginalData:Omega_Angle,root:OriginalData:ProcessFlag,root:OriginalData:ProcessedImage,root:OriginalData:ExperimentalNote,root:OriginalData:Ef_Correction as "C:Users:Administrator:Documents:pROCESS:Machine Mapping:pilot:exports:original_parameters.tsv"
+
+3. 建立项目内的 Igor 符号路径（重名时先核对已有路径）：
+NewPath/Q MMExport "C:Users:Administrator:Documents:pROCESS:Machine Mapping:pilot:exports:"
+
+4. 导出副本。Save/C 防止把实验 Wave 的外部文件引用改为这些新导出：
+Save/C/P=MMExport root:OriginalData:A20211118121854,root:OriginalData:A20211118123854,root:OriginalData:A20211118130449,root:OriginalData:A20211118133047,root:OriginalData:A20211118135051,root:OriginalData:A20211118141230,root:PROCESS:F1t0O0PP0PT0PV0P_0,root:PROCESS:F1t0O0PP0PT30NV0P_0,root:PROCESS:F1t0O0PP0PT60NV0P_0,root:PROCESS:F1t0O0PP0PT90NV0P_0,root:PROCESS:F1t0O0PP0PT120NV0P_0,root:PROCESS:F1t0O0PP0PT150NV0P_0
+
+5. 读取当时处理参数：
+Print "MM_PARAMS",root:PROCESS:PhotonEnergy,root:PROCESS:WorkFunction,root:PROCESS:LatticeConstant,root:PROCESS:ThetaOffset,root:PROCESS:PhiOffset,root:PROCESS:OmegaOffset,root:PROCESS:IntegrationStart,root:PROCESS:IntegrationEnd
+
+6. 原生统计交叉核验（printf 内的反斜杠 r 为 Igor 格式字符串中的换行）：
+WaveStats/Q root:OriginalData:A20211118121854; printf "MM_FIRST_EXACT %.0f %.0f\r",V_npnts,V_sum
+WaveStats/Q root:OriginalData:A20211118141230; printf "MM_LAST_EXACT %.0f %.0f\r",V_npnts,V_sum
+
+现场输出分别为：MM_FIRST_EXACT 181101 15752892；MM_LAST_EXACT 181101 8918145。
+这些命令不执行处理和拼图，会更新 WaveStats 结果变量并添加导出符号路径。
