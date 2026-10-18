@@ -1,4 +1,11 @@
-FeSe20211118_JJJ 试点审查，2026-10-18
+FeSe20211118_JJJ 历史试点审查，2026-10-18
+
+本轮版本说明：下述数值验证属于旧电脑的原生导出和旧PXP。
+本机新副本511585161字节，SHA256为
+81dd8282998b672c9c4d5aaf24e19098f3e9826eaefdad60d87184fa1b61d5da，
+与下述旧副本不同。本轮仅重新核对六条theta、phi、偏压及PROCESS部分设置，
+未重跑全量网格/强度验证。独立记录面板已建立，Igor科学流程尚未验证完成。
+当前等待用户自行处理授权并明确恢复。完整状态见HANDOFF.txt。
 
 原实验：F:\Data_JiaJunJie\FeSe_LLL\FeSe\FeSe20211118_JJJ.pxp
 磁盘副本：pilot/input/FeSe20211118_JJJ.pxp（510998321 字节）

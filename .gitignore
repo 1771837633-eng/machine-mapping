@@ -3,3 +3,4 @@ pilot/exports/
 pilot/results/
 __pycache__/
 *.pyc
+local/

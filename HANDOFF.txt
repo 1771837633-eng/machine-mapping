@@ -1,158 +1,208 @@
 Machine Mapping 智能体交接入口
-最后更新：2026-10-18（Asia/Shanghai）
+更新：2026-10-18（Asia/Shanghai）
+本轮基线：3572219cd812461bc1d76dd2c528d1a7bcc6790a；当前提交号以 git log 为准。
+阅读顺序：AGENTS.md -> 本文件 -> PROGRESS.txt -> README.txt -> pilot/review.txt。
+历史交接全文：git show 3572219:HANDOFF.txt。
 
-0. 最先掌握的状态
+0. 接手第一件事：当前暂停要求和实际完成边界
 
-用户要的是在 Igor 中配置一组扫描后，一次运行完成加载、theta 标注、处理、
-mapping 拼图和保存的自动化工具。用户已明确指出，仅预检和代替手工检查不能满足需求。
-目前只有 Python 预检脚本；还没有编写/加载项目自己的 Igor 批处理入口，
-没有完成自动角度回写，没有生成新的自动化费米面，也没有跑通端到端流程。
-下一步应实施完整试点批处理，不能反复把预检当作交付。
-本次仅完善交接、补充复现检查并修正文档状态，不推进 Igor 功能实现。
+用户确定“独立实验记录面板 + Igor处理模块”。实验不只有机械mapping，其他
+条件必须正常记录，全部记录必须可导出Excel。三维数据明确为固定hv的
+I(E,kx,ky)，不考虑kz。最终要正常批次自动完成，不依赖Codex逐次代点。
 
-阅读顺序：AGENTS.md -> 本文 -> PROGRESS.txt -> README.txt -> pilot/review.txt。
-代码入口：src/prepare_mapping.py；用户确认：pilot/angle_confirmation.json。
+已经实现并验证：本地网页记录面板、SQLite持久化、Excel运行时导出、分组校验，
+处理任务发送失败不阻断普通记录。5组Python测试通过，并实际在网页保存记录。
 
-1. 用户决定与范围
+已写入但未验证成功：igor/MMMomentum.ipf及Python /X发送桥。
+未确认IPF编译通过，未取得MM_MEMORY_COMPLETE，没有新费米面或三维科学输出。
+原始文件加载/预处理、角度回写、结果回读和保存都还未跑通。
+不要把面板、命令发送或Python测试通过写成Igor科学流程通过。
 
-- 项目根：C:\Users\Administrator\Documents\pROCESS\Machine Mapping。
-  精确保留 Machine Mapping 名称；不要沿用早期拼写 Mechanine Mapping。
-  任务临时文件、代码、数据副本和输出都在该项目内。
-- 用户要求先独立检查风险/假设，遇到问题指出依据和替代方案；数值结论需要核验。
-- 用户允许参考当前 Igor 与已加载程序，指定下述 FeSe PXP 为可直接试用对象。
-  原始实验保留，后续试验在项目副本中进行。
-- 六个 CUT 的 theta 已由用户确认，以角度表为准；最后一条为 -15°。
-  无需再次询问同一角度事实。备注最后的 0 不删，记为已解决的历史冲突。
-- ±5 meV 只是技术试跑建议；用户未确认它是科学处理参数。±10 meV 已检出越界。
-- 用户要求当前讨论与代码进仓库，并追加：以后每一次 Git 都要支持其他智能体接手。
-  该长期规则已写入 AGENTS.md。不要在交接中记录登录令牌或一次性设备码。
+当前用户明确暂停：“我先解决一下igor的问题，让它不再是一个demo，然后你再继续”。
+之后只授权“把目前的进度Git上去”，并要求其他智能体完整接手。
+Git整理不恢复Igor工作。等待用户明确表示授权处理好并要求继续。
+用户此前说“我帮你重启一个”，指用户自己操作，不是允许擅自终止/重启会话。
 
-2. 仓库与本地环境
+1. 用户决定、确认和未知项
 
-远端：https://github.com/1771837633-eng/machine-mapping.git
-分支：main，跟踪 origin/main。
-首次保存进度的提交：6a3336d4546a5d8f251812dd7ed9ddb97c204320。
-当前修订号以 git log / git rev-parse HEAD 为准，不把上述基线当作最新提交。
-本地 Git 作者经用户选择配置为 1771837633-eng 和
-1771837633-eng@users.noreply.github.com；此作者设置仅在该仓库生效。
-GitHub CLI 已通过用户浏览器授权登录；下一次必须重新检查实际认证状态。
-HTTPS 推送在上次操作中成功。此机仓库本地 http.proxy 为 http://127.0.0.1:7897，
-该设置不随 clone 传递；换机器按实际网络配置。不要打印凭据。
-此机原有 SSH 配置被 OpenSSH 报告 owner/permissions 问题；HTTPS 已可用，
-此项目不依赖 SSH，未修改 Windows SSH 权限。
+- 独立面板记录所有类型实验，mapping参数不全或Igor错误不应阻止记录/导出。
+- 参考experimental record.xlsx原22字段，加入扫描组、采集顺序和明确Igor角度。
+- Polar/Tilt/Azimuth到Igor theta/phi/omega的马达对应、单位和正方向未定标。
+  当前分别记录，禁止默默映射。能量步长与马达步长分别保存，空白不补零。
+- 六条theta已确认0,-3,-6,-9,-12,-15°；最后备注0是保留的历史冲突，不重问角度。
+- ±5meV只是技术试跑初值，不是用户确认的科学窗口；历史±10meV越过+7.5meV上限。
+- 用户后续说“尝试就行，不需要保存”，适用于当前Igor内存试验。
+  Excel导出仍是产品必需功能；今后科学结果保存另行实现和验证。
+- 原始实验保持不变，试验使用项目副本，不修改安装目录程序。
+- 搜索过官方Skills目录和第三方科学技能库，未找到直接完成本流程的专用Skill。
+  已解释Jupyter Notebook（可重复数值核验）与Condensed Matter Physicist
+  （凝聚态/ARPES分析指导）；均未安装，不作为应用依赖。
 
-Windows / PowerShell，Python 3.9，igor2 0.5.12，numpy 1.26.4。
-Python 已知路径：C:\Users\Administrator\AppData\Local\Programs\Python\Python39\python.exe。
-Igor：9.05 64-bit；程序位置：
-D:\igor\Igor Pro 9.0.5.1\Igor Pro 9 Folder\IgorBinaries_x64\Igor64.exe
-检查时用户打开的实验标题为 FeSe20211118_JJJ。窗口和控件索引随会话变化，
-不要复用聊天中旧窗口句柄或假设当前仍打开同一实验，重新观察后操作。
+2. 当前环境与历史路径
 
-3. 输入、输出与不可移植依赖
+项目：D:\SynologyDrive\SJJiang\SynologyDrive\codex\machine mapping
+模板：D:\SynologyDrive\SJJiang\SynologyDrive\Notebook\experimental record.xlsx
+模板SHA256：7f32e99c1acd0530523526506bddb6139585ec0028fc7c1f6f7ca15558e30cda
+模板Sheet1已用A1:V37；内容为顶部公共条件标签和第3行22列标题，无已填实验数据。
+未修改模板；目前只导出面板自己的记录，没有Excel模板导入/版式往返。
 
-日常数据：Z:\2026；2026 为年度目录，不能写死成所有年份固定目录。
-本次试点原 PXP：F:\Data_JiaJunJie\FeSe_LLL\FeSe\FeSe20211118_JJJ.pxp。
-项目磁盘备份：pilot/input/FeSe20211118_JJJ.pxp，510998321 字节。
-PXP SHA256：687cc1fa761490899e6d29b976085b0a359a82fa6bece23946e0c7a2b915f54b。
-磁盘备份与原文件哈希曾核对一致；现场 Igor 导出可能包含未保存状态，
-不要把磁盘 PXP 与现场导出直接当作同一时刻的状态。
+Igor程序：
+D:\Applications\Igor Pro 9.0.5.1\Igor Pro 9 Folder\IgorBinaries_x64\Igor64.exe
+源码：同一Igor Pro 9 Folder下User Procedures\Xingjiang_IOP\Latest。
+当时是Igor9.05 Demo，提示无法保存实验/图像/数据；用户自行处理授权中。
+不要复用旧窗口句柄/进程号，不记录授权码，不绕过许可。
 
-pilot/exports/original_parameters.tsv：Igor 原生参数表导出，20 行数据，8 列。
-列顺序：OriginalImage、Theta_Angle、Phi_Angle、Omega_Angle、ProcessFlag、
-ProcessedImage、ExperimentalNote、Ef_Correction。
-参数表 SHA256：42365290b89346c15e2db3a495ea578292908712d563a863f0425b8e7e315a5b。
-确认文件绑定这个精确哈希；导出格式/换行或表内容变化均可能导致哈希变化。
-不要为了消除报错直接重写确认哈希；先比较内容、确定其与原确认的对应关系并记录依据。
+本轮验证Python3.12.14：
+C:\Users\17718\.cache\codex-runtimes\codex-primary-runtime\dependencies\python\python.exe
+Node：同dependencies\node\bin\node.exe。
+另有用户Python313，沙箱中运行曾拒绝访问，不能据此声称未安装Python。
+面板仅标准库；requirements.txt仅用于历史预检（原验证Python3.9/igor2 0.5.12/numpy1.26.4）。
+旧电脑C:\Users\Administrator\Documents\pROCESS\Machine Mapping和D:\igor是历史路径。
+换机以当前checkout为准，--igor显式配置。旧Git代理/登录不代表本机认证状态。
 
-6 个原始与处理后 Wave 的对应关系（按采集顺序）：
-原始 Wave          theta  处理后 Wave
-A20211118121854       0   F1t0O0PP0PT0PV0P_0
-A20211118123854      -3   F1t0O0PP0PT30NV0P_0
-A20211118130449      -6   F1t0O0PP0PT60NV0P_0
-A20211118133047      -9   F1t0O0PP0PT90NV0P_0
-A20211118135051     -12   F1t0O0PP0PT120NV0P_0
-A20211118141230     -15   F1t0O0PP0PT150NV0P_0
-原始 Wave 位于 root:OriginalData，处理后 Wave 位于 root:PROCESS。
-各自保存为 pilot/exports/<Wave名>.ibw，共 12 个。
-表中索引为 8–13（0 起算）；phi=0、omega=0、ProcessFlag=1。
-未来不能仅凭行号或 ProcessFlag 分组，必须按稳定文件/Wave 身份匹配。
+3. 数据版本和已核对的本轮事实
 
-pilot/results/audit.json：所有 Wave 的哈希、网格、总强度、Note、问题和已解决项。
-pilot/results/angle_preview.tsv：逐 CUT 预览，有原行号、原备注和 angle_authority。
-pilot/results/verification.json：本次新增复现检查工具的执行结果。
-以上 input/exports/results 全部被 Git 忽略。本仓库提交了元数据与结论，
-但没有完整实验数据，也没有安装目录的 Igor 源码。因此全新 clone 能了解进展，
-不能在缺少本地数据、Igor 和外部程序时独立重放科学流程。
-同机优先检查现有导出；缺失时按 pilot/export_commands.igor.txt 重新导出。
-不同机器需要取得用户提供的数据与可用的 Igor 程序，不要伪造缺失数据或声称复现成功。
+本轮源：
+D:\SynologyDrive\SJJiang\SynologyDrive\DATA_FeSe_Jiajunjie\FeSe20211118_JJJ.pxp
+项目副本：pilot/input/FeSe20211118_JJJ_current.pxp
+511585161字节，SHA256：
+81dd8282998b672c9c4d5aaf24e19098f3e9826eaefdad60d87184fa1b61d5da
+源文件此前读取的哈希和本轮副本核对一致，未写回源PXP，未保存Igor实验。
 
-4. 现有代码与验证
+旧副本510998321字节，SHA256：
+687cc1fa761490899e6d29b976085b0a359a82fa6bece23946e0c7a2b915f54b。
+历史确认绑定表SHA256：
+42365290b89346c15e2db3a495ea578292908712d563a863f0425b8e7e315a5b。
+没有改写pilot/angle_confirmation.json哈希。
+历史12个IBW、参数TSV、audit.json不在Git，本机缺失这些导出；
+tools/verify_pilot.py本轮未运行，不能说历史8组检查在此机重放通过。
+历史数值见pilot/review.txt；新旧文件不同，不能混用验证结论。
 
-prepare_mapping.py 读取导出的表和 IBW，需要明确的 CUT 列表、起始角和非零步长。
-不会自行排序，不从波形猜角度，不修改原始文件或 Igor。
-确认文件仅解析并应用已记录的用户确认；校验表哈希和角度，保留原 Note。
-ready_for_scientific_mapping 始终为 false，这是当前实现边界。
+本次Igor实际执行：
+NewDataFolder/S root:MMTrial20261018; LoadData/R "D:SynologyDrive:SJJiang:SynologyDrive:codex:machine mapping:pilot:input:FeSe20211118_JJJ_current.pxp"; SetDataFolder root:; Print "MM_LOADED_ISOLATED"
+真实回执58数据目录、504Wave、974数值变量、133字符串变量。
+随后原生Print核对六条theta0,-3,-6,-9,-12,-15；phi=0；BiasVoltage=0。
+PROCESS设置：hv6.994、WorkFunction4.8、LatticeConstant3.68；
+ThetaOffset/PhiOffset/RotationAngle/DetectorCenterAngle均0。
+这是读取的设置，尚未独立物理标定，也未重新做全量Wave网格/统计审计。
 
-完整运行命令见 README.txt；快速复核：
-  python tools/verify_pilot.py
-它使用现有本地导出，输出 ignored 目录中的 verification.json，不操作 Igor。
-缺少导出时给出缺失依赖并失败，不用模拟数据替代。
+六条原始身份 -> 旧表处理名（恢复后需核验本轮实际对应）：
+A20211118121854  0°   F1t0O0PP0PT0PV0P_0
+A20211118123854 -3°   F1t0O0PP0PT30NV0P_0
+A20211118130449 -6°   F1t0O0PP0PT60NV0P_0
+A20211118133047 -9°   F1t0O0PP0PT90NV0P_0
+A20211118135051 -12°  F1t0O0PP0PT120NV0P_0
+A20211118141230 -15°  F1t0O0PP0PT150NV0P_0
 
-已执行的验证：
-- 全部 12 个 Wave 为有限数值；原始 201×901，处理后 201×642。
-- 首尾原始 CUT 分别 181101 点，总强度为 15752892、8918145。
-  先用 Igor WaveStats 原生查询，再与 Python IBW 解析结果对照，一致。
-- 参数表六条角度可由 start=0、step=-3 完整重建。
-- 无确认时：6 个积分越界 + 1 个备注冲突。
-- 有确认且 ±10 meV 时：6 个积分越界，1 个 resolved_issues。
-- ±5 meV 只做预检边界检查时：无活动问题，仍不等于已生成/验证费米面。
-- 倒序可检出角度差异；重复 CUT、缺失 CUT、零步长、过期确认哈希和错误确认角度均被拒绝。
+4. 入口、运行方式和本地数据
 
-原始能量轴约 2.75–2.77 eV；处理后能量轴 -0.0125–+0.0075 eV。
-现场 PROCESS：PhotonEnergy=6.994，WorkFunction=4.8，LatticeConstant=3.68，
-ThetaOffset/PhiOffset/OmegaOffset 均为 0；IntegrationStart=-0.01、End=+0.01。
-这些是当时设定，并未独立完成物理标定。原始 Note 的 Excitation Energy=0、
-ThetaX=0、ThetaY=0 都不能替代实际光子能量/机械角度。
-igor2.packed.load 完整 PXP 时出现 buffer is too small for requested array；
-后来改用 Igor 原生 Save/J/W 与 Save/C 导出，IBW 读取已成功。
+app/records.py：34字段（原22+扩展12）、SQLite、revision并发编辑保护、xlsx生成。
+app/server.py：127.0.0.1本地服务，记录/公共条件/导出/分组/后台任务。
+app/static/index.html、app.js：实验记录/实验条件/机械mapping三页。
+tools/igor_command.py：检查单个有响应Igor64进程后用/X发送；无/I、/N。
+igor/MMMomentum.ipf：未成功编译/运行验证的内存动量转换原型。
+tools/seed_trial.py：六条已核验身份元数据重建独立试点库，未知条件留空。
+tests/test_notebook.py：5组行为测试，Igor连接在HTTP失败隔离测试中是mock。
+start_notebook.cmd：PATH中需有Python，启动普通空记录库，不含试点数据。
+src/prepare_mapping.py、tools/verify_pilot.py：历史只读预检，不操作Igor。
 
-5. 外部 Igor 源码与需要核验的行为
+项目根普通启动：
+python -m app.server --port 8766
+打开http://127.0.0.1:8766/，默认local/notebook.sqlite3。
+可用--db "路径"、--igor "Igor64.exe完整路径"，不需装requirements.txt。
 
-源码目录（没有复制到 Git）：
-D:\igor\Igor Pro 9.0.5.1\Igor Pro 9 Folder\User Procedures\Xingjiang_IOP\Latest
-行号来自当前检查版本；后续以符号及实际文件为准。
+重建本轮试点（需要用户本地PXP，不随Git提供）：
+python tools/seed_trial.py --pxp "pilot/input/FeSe20211118_JJJ_current.pxp"
+python -m app.server --port 8766 --db local/trial-notebook.sqlite3 --igor "D:\Applications\Igor Pro 9.0.5.1\Igor Pro 9 Folder\IgorBinaries_x64\Igor64.exe"
+seed遇已有记录退出，不重复填充；位置/真空单位在公共条件填写。
 
-00BXJZHERS_SES2002.ipf：Load_SES2002_Data（约 1527 行），
-XJZ2LoadSESb_F（约 2361 行），候选加载入口；尚未自动调用并验证加载批次。
-05XJZSetParameterTables.ipf：Set2DParameter（119 行），127–129 行 Make/O
-重建 OriginalImage、ProcessedImage、ExperimentalNote 与角度数组；
-表与 WaveList 顺序相关，后续要先备份、按身份映射，不能盲目重跑覆盖已有标注。
-06XJZProcessImage.ipf：读取 OriginalData 的角度，214 行回写 ProcessedImage，
-858–863 行把角度编码到处理名；只改 Wave 名不能替代批量角度填表和重新处理。
-02XJZ_ProcessImageDispersion.ipf：604 行 GetFS 按钮绑定 KxKyImage_XJIOP。
-00_ZWT_KxKyImage.ipf：62 行 KxKyImage_XJIOP，使用实际角度数组。
-其路径曾用 Igor FunctionPath("KxKyImage_XJIOP") 现场确认，非仅按磁盘同名猜测。
+本轮网页曾使用local/trial-notebook.sqlite3，7记录/0任务：
+六条CUT身份元数据 + “界面验证记录（非实验数据）”，测试温度15K。
+该测试记录不是FeSe实验条件；新seed只生成6条元数据。
+服务曾在工具会话76082运行，现场确认是否存活；不能复用会话ID作持久保证。
+端口占用时另选--port，不终止未知服务。
 
-未修复的可疑项（只做静态定位，尚未以专项对照试验证实影响大小）：
-- 97 行 Eb=(IntEstart+IntEstart)/2：能量中点重复使用起点。
-- 143 行内层过滤使用 ordersuffix[gg]，需核对是否应为 gg+yy。
-- 148 行交换 Phi 临时值用 orderPhi_Angle[ii]，需核对索引。
-- 会创建/覆盖临时 Wave、修改当前数据目录和部分全局参数；完整副作用待审计。
-10XJZThetaPhiMapping.ipf 是旧路径：369/406/412 行的循环隐含正向 1°。
-不要把旧路径限制套到当前 GetFS；也不要未经验证就声称当前 GetFS 正确。
-210_MTM_BiasARPESPanel.ipf 的 MTM_visualize_ARPESdata 是 proc（24 行）；
-FunctionPath 对它返回冒号，不能把冒号误读成它是用户实验内的唯一程序。
+local/全部忽略：数据库、notebook-preview.png、qa-export.xlsx、compile.txt。
+pilot/input、exports、results也忽略；这些文件不会随clone出现。
 
-6. 下一位智能体应怎样继续
+5. Igor模块设计和实际故障，必须先验证
 
-先读规则并核验 git status，确认数据/程序路径仍存在，重新观察 Igor 当前实验。
-用已确认的六个 CUT 和现有处理配置开展第一阶段，不必重新询问已确认 theta。
-在项目副本中实现 Igor 批处理入口，保存参数备份与稳定 CUT 对应关系，
-审查上述 mapping 函数的依赖和副作用，在项目内隔离修复并验证。
-选择科学窗口仍需依据目标；技术试验若采用 ±5 meV，明确记录为试验假设。
-完成一次运行自动选 CUT、填角、处理、拼图、另存新 PXP 和运行记录。
-先用现有人工结果进行 Wave 数值对照，不只看图片，再扩展 Z: 新数据批量加载。
-详细验收与后续步骤见 PROGRESS.txt 第五节。
+MM_Run(source,destination,cuts,expectedTheta,low,high,nx,ny,expectedHV)
+source：含OriginalData和PROCESS的隔离目录，末尾冒号。
+cuts和expectedTheta：同长度分号列表；窗口单位eV；目标目录不得已存在。
+读取已有处理后CUT，不跑原始预处理、不写角度。
+计划核对theta/hv、共同phi、零偏压、共同网格和能量覆盖，按实际theta排序保留身份。
+计划生成EKxKy(E,kx,ky)、Coverage、FermiSurface、ZeroEnergySlice及元数据；
+k单位pi/a，未覆盖NaN，无kz，不保存文件。
+源码含往返误差/源强度检查，但尚未实际执行，不能当成通过。
 
-每次 Git 前都同步本交接信息及相关记录；保留实际验证命令和结果，
-不能把尚未执行的测试、仍在讨论的参数或计划实现的功能写成完成。
+算法参考本机16XJZGetEKxKyIntensityTable.ipf的GetEKxKyIntenTable：
+K0=0.5118*LC/3.1416*sqrt(hv-workf+E)；
+beta=DetectorCenterAngle-detectorAngle+phi-PhiOffset；
+kx=K0*sin(beta)，ky=K0*sin(theta-ThetaOffset)*cos(beta)，再按RotationAngle旋转。
+当前原型对其做逆变换、theta/探测器角度线性插值及能量梯形积分。
+不同于GetFS另一条含偏压/强度校正路径，不能未经比较就说与其等价。
+
+只读源码发现：
+- 14XJZCreate3DImage.ipf的Make3DEKxKyImage虽名EKxKy，实际仍堆叠能量和角度，
+  并隐含正向1°；不能当作已正确转换的E-kx-ky立方体。
+- 00_ZWT_KxKyImage.ipf的GetFS路径与逐点表的符号、Omega/RotationAngle及强度校正不同。
+  旧已定位能量中点重复IntEstart、排序/索引问题未修复。
+- 06XJZProcessImage.ipf的XJZProcess/XJZNewImg会清空/重建ProcessedImage并删除旧处理Wave；
+  本轮未调用。将来必须隔离审查，不能在用户实验直接批量运行。
+
+真实接口问题：
+1. 简单/X Print 731819和参数只读Print曾在界面取得回执。
+2. subprocess列表带引号路径使Igor收到字面量反斜杠引号，报
+   expected 'as', <cr> or ';'，并未成功编译。
+3. 已改为原始Windows命令行传递引号；修改后的行为未成功核验。
+   Igor后来曾未响应，尚不确定哪条命令是根因，不应写成已查明。
+4. 用户先处理授权，故当前不继续发命令、不自动重启。
+
+其他未完成限制：
+- dispatched_unverified只表示发送；无执行完成/失败回调，无计算超时/可靠忙状态。
+- 后台锁只保护发送阶段，不代表整个计算独占，不能称无人值守工具。
+- 重跑会新建输入目录重新载入整个PXP，尚未去重和管理内存。
+- 手填phi/omega当前不覆盖源表，只有theta/hv有显式核对；须补完整参数契约。
+- 未独立校准能量、几何、强度，未与人工结果做数值对照。
+- 没有原始文件加载/预处理/角度回写/保存，不能称端到端完成。
+
+6. 实际验证和不可声称的结果
+
+已执行：
+python -m unittest discover -s tests -v：5 tests OK。
+覆盖保存/重启/空白与零、revision冲突、固定hv身份顺序保护、xlsx字段和公式文本保护、
+mock Igor失败后仍能新增普通记录。
+node --check app/static/app.js：通过。
+Python compileall（app、igor_command.py、seed_trial.py）：通过，不是Igor编译。
+git diff --check：此前通过，提交前再检查。
+
+网页实际操作：六条试点列表可见；未填mapping参数的变温测试记录保存成功（6->7）；
+mapping页显示正确六条theta；修正窄窗口横向溢出和导出按钮对比度。
+
+Excel：GET /api/export.xlsx，独立openpyxl读取qa-export.xlsx：
+“实验记录”“实验条件”两表；记录表8行37列（34字段+ID/Created/Updated）；
+theta0、测试温度15为数字，0个公式单元格。
+未在原生Excel打开/做版面验证；用户源模板未修改。
+
+未完成：本轮PXP全量审计、IPF真实编译通过、MM_MEMORY_COMPLETE、
+新I(E,kx,ky)/费米面、源/目标数值对照、完整自动化流程。
+测试假数据只验证软件行为，不是科学输入。
+
+7. 用户恢复后的下一步
+
+1. 等用户明确恢复，重新观察唯一Igor实例、授权及当前实验，保护未保存数据。
+2. 简单只读Print验证/X，再专项验证带引号/空格路径命令；不要反复排队发往未响应实例。
+   可考虑官方COM；本机当时未检出IgorPro.Application注册，尚未配置COM。
+3. 加载项目IPF取得真实编译诊断，按证据修复。只改项目文件，不改全局安装。
+4. 重新核验新PXP六条处理名/网格/能量/角度/完整几何；先小网格内存试跑。
+5. 取得MM_MEMORY_COMPLETE，核对轴缩放/覆盖/无外推/源不变/往返误差。
+6. 与既有逐点表和人工结果独立对照，说明两条旧路径的符号、单位和强度约定。
+7. 再接参数映射、完成/失败回调、重复保护、选择性加载和内存管理；
+   然后接新原始文件、写完判定、预处理，最终才做日常一键流程和可选保存。
+
+8. Git原则
+
+每次提交同步决定、完成边界、复现和下一步。不提交源实验/数据库/授权信息。
+本轮作者沿用前两提交1771837633-eng / 1771837633-eng@users.noreply.github.com。
+推送后核对HEAD与远端main一致；网络/认证失败要明确报告，不能说已上传。
