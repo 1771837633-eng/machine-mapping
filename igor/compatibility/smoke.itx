@@ -1,0 +1,16 @@
+IGOR
+X NewDataFolder/O/S root:MMRepairSmoke20261019
+X Make/O/D/N=3 MMR_a={1,2,3}
+X Print "MM_REVERSE_BASIC", JEG_ReverseLegacy(MMR_a), MMR_a[0], MMR_a[1], MMR_a[2]
+X MMR_a={1,2,3}; SetScale/P x,5,2,MMR_a
+X Print "MM_REVERSE_SCALED", JEG_ReverseLegacy(MMR_a), MMR_a[0], MMR_a[1], MMR_a[2]
+X Make/O/D/N=2 MMR_b={4,5}
+X MMR_a={1,2,3}; Print "MM_CONCATENATE_BASIC", JEG_ConcatenateLegacy(MMR_a,MMR_b,"MMR_c","")
+X Print MMR_c[0],MMR_c[1],MMR_c[2],MMR_c[3],MMR_c[4]
+X SetDataFolder root:
+X Load_SES2002_Data()
+X Print "MM_LOADER_PANEL", WinType("ARPES_Analysis")
+X FLfit()
+X Print "MM_FERMI_PANEL", WinType("FitFermiLevel")
+X SetDataFolder root:
+X Print "MM_LEGACY_SMOKE_COMPLETE"

@@ -1,0 +1,64 @@
+Machine Mapping：共享文件夹直接接手入口
+更新2026-10-19，Asia/Shanghai。用户明确允许通过远程访问本文件夹交接，不依赖GitHub。
+
+先读这四份文件，再操作：
+1. HANDOFF.txt：用户决定、已验证事实、不能宣称的边界、实际环境和复现。
+2. PROGRESS.txt：各层验证结果、未完成事项和Git阻塞历史。
+3. README.txt：启动和已有处理后CUT试点用法。
+4. pilot/mapping_validation.json、pilot/review.txt：精确数据/源码哈希、任务和数值对应。
+项目约束见AGENTS.md。用户最新明确要求：只用已有后台64位Igor，不改原Igor源程序，
+需要功能写项目独立模块。本次科学结果只留内存，不额外保存原实验或三维数据。
+
+当前工作区就是交接对象
+本次Git保存以470f468为父版本，精确提交号用git log查询；是否已推送须核对实际远端。
+新代码和完整修改都在本目录。历史审批容量故障已恢复，最新GitHub连接仍曾出现443超时；
+不能只依赖缓存的origin/main或GitHub旧版本。不必先解决远端连接才能从此共享目录接手。
+不要git reset/clean、覆盖本目录、删除local或按旧交接里的暂停要求停止当前工作。
+原旧库兼容性工具只是历史成果，见igor/compatibility，不作为当前mapping的依赖或入口。
+
+本地固定版本检查点
+读取local/handoff/LATEST.txt，得到最新检查点的项目相对路径。
+检查点source/保存当时的代码和文档，包括尚未加入Git的新文件。
+state/notebook.sqlite3是用SQLite在线备份API取得的一致性快照；records.json、session.json、
+jobs.json可直接阅读，receipts/是完整的终态回执。manifest.json记录文件清单/SHA256和依赖。
+tracked-changes.patch仅辅助Git恢复；source/已包含未跟踪文件，所以无需Git也能取回代码。
+原始PXP/旧库现场快照等较大依赖保留原位并列入manifest，不重复打包。它们都在本文件夹内。
+检查点source/是版本备份，不要在其内部直接启动程序，那里不含完整相对数据目录。
+生成或更新检查点：python tools/prepare_local_handoff.py
+完成后核对脚本结果、manifest及LATEST指向；未完成目录不会更新LATEST。
+
+共享目录里不可遗漏的非Git文件
+pilot/input/FeSe20211118_JJJ_current.pxp：511585161字节；SHA256见validation JSON。
+local/trial-notebook.sqlite3：六条真实CUT元数据+一条明确非实验QA记录，当前三项任务。
+local/igor-bridge/*.receipt.txt：任务完成/失败证据，不是科学Wave数据。
+local/igor-repair/session-before和runtime：历史旧库捕获与隔离副本，不是当前依赖。
+local/qa-export-current.xlsx：已经独立核验的实验记录导出QA文件。
+这些目录被.gitignore忽略，但共享文件夹交接时仍应保留；不要按Git忽略规则过滤复制。
+不复制授权信息、会话实时连接、请求或任务锁来“恢复运行”。
+
+必须区分两种接手方式
+A. 远程桌面控制原电脑：进程仍在原电脑。先重新观察该电脑的64位Igor和面板，
+   如8766已运行并连接，不要再启动一套。不要关闭用户未保存的实验或改原过程缓冲区。
+B. 在另一台电脑上直接运行本共享目录里的代码：Python、Igor、localhost端口不会迁移。
+   先核对根目录、数据哈希、Python3.9+和新电脑的实际64位Igor路径/窗口。
+   若路径为UNC网络共享，Igor路径格式还未验收；先使用带盘符的项目路径并重新生成连接脚本。
+   浏览器127.0.0.1仅表示正在运行服务的那台电脑，不能用它指代原电脑。
+   同步目录里已观察到ready_*_Conflict.txt，不可拿旧心跳当作新电脑Igor已连接的证据。
+
+新电脑采用唯一运行标识，例如PC_B（换成实际唯一名称），不复用旧bridge/数据库：
+   python tools/prepare_notebook_bridge.py --directory local/runtime-PC_B/bridge
+   python -m app.server --port 8766 --db local/runtime-PC_B/notebook.sqlite3 --bridge-dir local/runtime-PC_B/bridge
+先把最新检查点的SQLite快照复制到上述新数据库路径，保留快照原件；没有历史记录需求可建空库。
+程序不会自动复制数据库，也不会自动启动Igor。不要同时让两台电脑写同一SQLite或同一bridge。
+将prepare脚本打印的LoadWave/T命令只在新电脑选定的已有64位Igor执行。
+准备桥目录的--directory必须与服务--bridge-dir一致；已连接则不必重复加载。
+数据库内PXP绝对路径可能指向原电脑。先保留记录，再在面板更新实际源路径；不静默修改原库。
+多电脑启动只增加了目录选择入口，尚未在第二台真实电脑或UNC路径做端到端验收。
+
+结果边界和下一步
+已有处理后CUT试点已通过，真实结果201×121×81；新采集文件发现/加载/预处理和物理标定未完成。
+原生解析模型自检、源CRC、越界失败、普通记录/Excel导出已验证，详见验收记录。
+Igor的科学Wave/费米面目前只在原会话内存；文件夹不包含它们，关闭该会话会丢失。
+另一台电脑需按已记载输入/参数重新计算，不能把旧成功回执当成新会话已有结果。
+未知任务锁需先查原实例/任务状态，不删锁重发、不自动重放jobs.json或旧request.txt。
+接下来先核对科学窗口、角度约定和人工结果，再接新采集文件格式与预处理。

@@ -4,18 +4,16 @@ No third-party Python packages. The Igor bridge dispatches memory-only trials;
 it does not claim a successful launch is successful scientific processing.
 """
 import argparse
-import hashlib
 import json
 import math
 import secrets
-import threading
 import uuid
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from urllib.parse import urlsplit
 
 from app.records import FIELDS, MODES, SESSION_FIELDS, Store, export_xlsx, now
-from tools.igor_command import dispatch
+from app.igor_bridge import IgorBridge
 
 ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_EXE = r'D:\Applications\Igor Pro 9.0.5.1\Igor Pro 9 Folder\IgorBinaries_x64\Igor64.exe'
@@ -54,12 +52,15 @@ def scan_manifest(records, scan_id, config):
     for key in ('temperature','polarization'):
         if len({r[key] for r in group})!=1:
             raise ValueError('扫描组的温度或偏振不同，请先确认分组')
+    if any(r.get('phi') not in (None,0) or r.get('omega') is not None for r in group):
+        raise ValueError('当前试点只接受 phi=0 或留空，omega 留空；马达映射尚未定标')
     try:
         low,high=float(config['low']),float(config['high'])
-        nx,ny=int(config.get('nx',121)),int(config.get('ny',81))
+        gx,gy=float(config.get('nx',121)),float(config.get('ny',81))
+        nx,ny=int(gx),int(gy)
     except (KeyError,ValueError,TypeError,OverflowError):
         raise ValueError('积分窗口和网格参数无效') from None
-    if not math.isfinite(low+high) or low>=high or not (3<=nx<=301 and 3<=ny<=301):
+    if not math.isfinite(low+high) or low>=high or gx!=nx or gy!=ny or not (3<=nx<=301 and 3<=ny<=301):
         raise ValueError('需要有限且递增的积分窗口，网格范围 3–301')
     group.sort(key=lambda r:r['sequence'])
     return {'records':group,'pxp':str(pxp.resolve()),'low':low,'high':high,'nx':nx,'ny':ny,
@@ -78,15 +79,32 @@ def job_commands(manifest, job_id):
     angles=';'.join(str(r['theta']) for r in manifest['records'])+';'
     load='NewDataFolder/S '+base[:-1]+'; LoadData/R '+quote_igor(path)+'; SetDataFolder root:'
     # Check hv against recorded value before calculation; no silent substitution.
-    run=f'MM_Run({quote_igor(base)},{quote_igor(target)},{quote_igor(cuts)},{quote_igor(angles)},{manifest["low"]:.12g},{manifest["high"]:.12g},{manifest["nx"]},{manifest["ny"]},{manifest["hv"]:.12g})'
+    run=f'MMMapping#MM_Run({quote_igor(base)},{quote_igor(target)},{quote_igor(cuts)},{quote_igor(angles)},{manifest["low"]:.12g},{manifest["high"]:.12g},{manifest["nx"]},{manifest["ny"]},{manifest["hv"]:.12g})'
     module=str(ROOT/'igor'/'MMMomentum.ipf').replace('\\',':').replace('/',':').replace('::',':')
-    setup='OpenProc/V=0 '+quote_igor(module)+'; CompileProcedures'
+    setup='OpenProc/V=0 '+quote_igor(module)+'; Execute/P "COMPILEPROCEDURES "'
     return {'setup':setup,'load':load,'run':run,'result_folder':target}
 
 
-def create_server(port, store, exe):
+def create_server(port, store, exe, bridge=None):
     token=secrets.token_urlsafe(24)
-    jobs_lock=threading.Lock()
+    bridge=bridge or IgorBridge()
+
+    def reconcile_jobs():
+        jobs=store.jobs()
+        for job in jobs:
+            if job['status'] in ('queued','awaiting_igor','waiting_unverified'):
+                receipt=bridge.receipt(job['id'])
+                if receipt:
+                    job.update(receipt,completed=now())
+                    store.save_job(job)
+                elif job['status']!='queued':
+                    # Missing response is uncertainty, never successful completion.
+                    import datetime
+                    age=(datetime.datetime.now(datetime.timezone.utc)-datetime.datetime.fromisoformat(job['created'])).total_seconds()
+                    if age>180 and job['status']!='waiting_unverified':
+                        job.update(status='waiting_unverified',message='尚未收到回执；任务仍被占用，请检查 Igor，勿重复提交。')
+                        store.save_job(job)
+        return jobs
 
     class Handler(BaseHTTPRequestHandler):
         def log_message(self,*args):
@@ -114,9 +132,9 @@ def create_server(port, store, exe):
                 return self.reply({'error':'Local access only'},403)
             path=urlsplit(self.path).path
             if path=='/api/state':
-                return self.reply({'records':store.records(),'session':store.metadata(),'jobs':store.jobs(),
+                return self.reply({'records':store.records(),'session':store.metadata(),'jobs':reconcile_jobs(),
                                    'fields':FIELDS,'modes':MODES,'session_fields':SESSION_FIELDS,'token':token,
-                                   'igor_executable':str(exe),'trial_only':True})
+                                   'igor_executable':str(exe),'igor_bridge':bridge.state(),'trial_only':True})
             if path=='/api/export.xlsx':
                 return self.reply(export_xlsx(store.records(),store.metadata()),mime='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
                                   headers={'Content-Disposition':'attachment; filename="experimental-record.xlsx"'})
@@ -153,23 +171,11 @@ def create_server(port, store, exe):
                          'status':'queued','manifest':manifest}
                     job['commands']=job_commands(manifest,job_id)
                     store.save_job(job)
-                    def worker():
-                        if not jobs_lock.acquire(blocking=False):
-                            job.update(status='failed',error='Igor 正在处理另一任务，请稍后重新提交')
-                            store.save_job(job)
-                            return
-                        try:
-                            # One posted command queues load/run only after compilation.
-                            commands=job['commands']
-                            queued=commands['setup']+'; Execute/P '+quote_igor(commands['load'])+'; Execute/P '+quote_igor(commands['run'])
-                            dispatch(exe,queued)
-                            job.update(status='dispatched_unverified',message='已发送至 Igor；请核对 MM_MEMORY_COMPLETE 或错误提示。尚未自动回读结果。')
-                        except Exception as error:
-                            job.update(status='failed',error=str(error))
-                        finally:
-                            store.save_job(job)
-                            jobs_lock.release()
-                    threading.Thread(target=worker,daemon=True).start()
+                    try:
+                        job.update(bridge.submit(manifest,job_id))
+                    except Exception as error:
+                        job.update(status='failed',error=str(error))
+                    store.save_job(job)
                     return self.reply({'job_id':job_id})
                 return self.reply({'error':'Not found'},404)
             except (ValueError,TypeError,json.JSONDecodeError) as error:
@@ -184,8 +190,10 @@ if __name__=='__main__':
     parser.add_argument('--port',type=int,default=8766)
     parser.add_argument('--db',type=Path,default=ROOT/'local'/'notebook.sqlite3')
     parser.add_argument('--igor',type=Path,default=Path(DEFAULT_EXE))
+    parser.add_argument('--bridge-dir',type=Path,default=ROOT/'local'/'igor-bridge',
+                        help='Use a separate project-local directory for each processing computer')
     args=parser.parse_args()
-    server=create_server(args.port,Store(args.db),args.igor)
+    server=create_server(args.port,Store(args.db),args.igor,bridge=IgorBridge(args.bridge_dir))
     print(f'Notebook: http://127.0.0.1:{server.server_port}',flush=True)
     try:
         server.serve_forever()

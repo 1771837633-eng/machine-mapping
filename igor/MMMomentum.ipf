@@ -1,5 +1,6 @@
 #pragma TextEncoding = "UTF-8"
 #pragma rtGlobals=3
+#pragma IndependentModule=MMMapping
 
 // Memory-only prototype. Geometry follows GetEKxKyIntenTable in
 // 16XJZGetEKxKyIntensityTable.ipf, not the old angle-stacking 3D macro.
@@ -45,7 +46,36 @@ Function MM_Pixel(e, kx, ky, source, theta, names, hv, workf, lc, toff, poff, ph
     return (1-f)*interp2D(w0,e,det)+f*interp2D(w1,e,det)
 End
 
+Function MM_Fail(message)
+    String message
+    NewDataFolder/O root:MMMappingState
+    String/G root:MMMappingState:LastError=message
+    AbortOnValue 1,100
+End
+
 Function MM_Run(source, destination, cuts, expectedTheta, low, high, nx, ny, expectedHV)
+    String source,destination,cuts,expectedTheta
+    Variable low,high,nx,ny,expectedHV
+    DFREF before=GetDataFolderDFR()
+    Variable code=0,err=0
+    NewDataFolder/O root:MMMappingState
+    String/G root:MMMappingState:LastError=""
+    try
+        MM_RunCore(source,destination,cuts,expectedTheta,low,high,nx,ny,expectedHV); AbortOnRTE
+    catch
+        code=V_AbortCode
+        String detail=GetRTErrMessage()
+        err=GetRTError(1)
+        SVAR message=root:MMMappingState:LastError
+        if(strlen(message)==0)
+            message=SelectString(err!=0,"Interrupted or aborted",detail)
+        endif
+    endtry
+    SetDataFolder before
+    AbortOnValue code!=0,code
+End
+
+Function MM_RunCore(source, destination, cuts, expectedTheta, low, high, nx, ny, expectedHV)
     String source,destination,cuts,expectedTheta
     Variable low,high,nx,ny,expectedHV
     DFREF saved=GetDataFolderDFR()
@@ -54,17 +84,20 @@ Function MM_Run(source, destination, cuts, expectedTheta, low, high, nx, ny, exp
     Variable k0,beta,t,kx,ky,xmin=Inf,xmax=-Inf,ymin=Inf,ymax=-Inf
     Variable a,b,va,vb,total,valid,p0,p1,frac,xv,yv,ev,actual,residual=0
     String cut,pname
-    if(n<2 || n!=ItemsInList(expectedTheta) || nx<3 || ny<3 || nx>301 || ny>301 || low>=high)
-        Abort "Invalid scan list, grid, or integration window."
+    if(n<2 || n!=ItemsInList(expectedTheta) || numtype(low+high+nx+ny+expectedHV)!=0 || nx!=floor(nx) || ny!=floor(ny) || nx<3 || ny<3 || nx>301 || ny>301 || low>=high)
+        MM_Fail("Invalid scan list, grid, or integration window.")
     endif
     if(DataFolderExists(destination))
-        Abort "Result folder exists. Use a new job ID to preserve previous results."
+        MM_Fail("Result folder exists. Use a new job ID to preserve previous results.")
     endif
     Wave/T originals=$(source+"OriginalData:OriginalImage")
     Wave/T processed=$(source+"OriginalData:ProcessedImage")
     Wave angles=$(source+"OriginalData:Theta_Angle")
     Wave phis=$(source+"OriginalData:Phi_Angle")
     Wave bias=$(source+"OriginalData:BiasVoltage")
+    if(numpnts(processed)!=numpnts(originals) || numpnts(angles)!=numpnts(originals) || numpnts(phis)!=numpnts(originals) || numpnts(bias)!=numpnts(originals))
+        MM_Fail("Source metadata columns have different lengths.")
+    endif
     hv=NumVarOrDefault(source+"PROCESS:PhotonEnergy",NaN)
     workf=NumVarOrDefault(source+"PROCESS:WorkFunction",NaN)
     lc=NumVarOrDefault(source+"PROCESS:LatticeConstant",NaN)
@@ -73,14 +106,14 @@ Function MM_Run(source, destination, cuts, expectedTheta, low, high, nx, ny, exp
     rotation=NumVarOrDefault(source+"PROCESS:RotationAngle",NaN)
     center=NumVarOrDefault(source+"PROCESS:DetectorCenterAngle",NaN)
     if(numtype(hv+workf+lc+toff+poff+rotation+center)!=0 || hv<=workf || lc<=0)
-        Abort "Missing or invalid momentum geometry."
+        MM_Fail("Missing or invalid momentum geometry.")
     endif
     if(abs(hv-expectedHV)>1e-8)
-        Abort "Source photon energy disagrees with notebook scan manifest."
+        MM_Fail("Source photon energy disagrees with notebook scan manifest.")
     endif
     NewDataFolder/O root:MMResults
     NewDataFolder/S $destination
-    Make/D/N=(n) Theta,SourceRows,SourceSums
+    Make/D/N=(n) Theta,SourceRows,SourceSums,SourceCRC
     Make/T/N=(n) Names,OriginalNames
     for(i=0;i<n;i+=1)
         cut=StringFromList(i,cuts)
@@ -88,30 +121,30 @@ Function MM_Run(source, destination, cuts, expectedTheta, low, high, nx, ny, exp
         for(j=0;j<numpnts(originals);j+=1)
             if(cmpstr(cut,originals[j])==0)
                 if(row>=0)
-                    Abort "Duplicate source identity."
+                    MM_Fail("Duplicate source identity.")
                 endif
                 row=j
             endif
         endfor
         if(row<0)
-            Abort "Requested CUT is missing from source parameter table."
+            MM_Fail("Requested CUT is missing from source parameter table.")
         endif
-        if(abs(angles[row]-str2num(StringFromList(i,expectedTheta)))>1e-8 || numtype(angles[row])!=0)
-            Abort "Current angle disagrees with the explicit scan manifest."
+        if(numtype(str2num(StringFromList(i,expectedTheta)))!=0 || abs(angles[row]-str2num(StringFromList(i,expectedTheta)))>1e-8 || numtype(angles[row])!=0)
+            MM_Fail("Current angle disagrees with the explicit scan manifest.")
         endif
         if(abs(bias[row])>1e-8 || numtype(bias[row])!=0)
-            Abort "This prototype does not implement biased ARPES geometry."
+            MM_Fail("This prototype does not implement biased ARPES geometry.")
         endif
         if(i==0)
             phi0=phis[row]
         endif
         if(abs(phi0-phis[row])>1e-8 || numtype(phis[row])!=0)
-            Abort "This prototype requires common phi."
+            MM_Fail("This prototype requires common phi.")
         endif
         pname=processed[row]
         Wave/Z w=$(source+"PROCESS:"+pname)
         if(!WaveExists(w) || WaveDims(w)!=2)
-            Abort "Missing processed 2D CUT. Raw-file preprocessing is not implemented by this prototype."
+            MM_Fail("Missing processed 2D CUT. Raw-file preprocessing is not implemented by this prototype.")
         endif
         if(i==0)
             ne=DimSize(w,0); nd=DimSize(w,1)
@@ -119,22 +152,23 @@ Function MM_Run(source, destination, cuts, expectedTheta, low, high, nx, ny, exp
             d0=DimOffset(w,1); dd=DimDelta(w,1)
         endif
         if(DimSize(w,0)!=ne || DimSize(w,1)!=nd || abs(DimOffset(w,0)-e0)>1e-10 || abs(DimDelta(w,0)-de)>1e-10 || abs(DimOffset(w,1)-d0)>1e-10 || abs(DimDelta(w,1)-dd)>1e-10)
-            Abort "Processed CUT grids differ."
+            MM_Fail("Processed CUT grids differ.")
         endif
         WaveStats/Q w
         if(V_numNaNs>0 || V_numINFs>0)
-            Abort "Source contains non-finite intensity."
+            MM_Fail("Source contains non-finite intensity.")
         endif
         Theta[i]=angles[row]; SourceRows[i]=row; SourceSums[i]=V_sum
+        SourceCRC[i]=WaveCRC(0,w)
         Names[i]=pname; OriginalNames[i]=cut
     endfor
-    if(de<=0 || ne<2 || nd<2 || dd==0 || low<e0-1e-9 || high>e0+de*(ne-1)+1e-9)
-        Abort "Integration window is outside processed energy coverage."
+    if(numtype(e0+de+d0+dd)!=0 || de<=0 || ne<2 || nd<2 || dd==0 || low<e0-1e-9 || high>e0+de*(ne-1)+1e-9 || hv-workf+e0<=0)
+        MM_Fail("Integration window is outside processed energy coverage.")
     endif
-    Sort Theta,Theta,Names,OriginalNames,SourceRows,SourceSums
+    Sort Theta,Theta,Names,OriginalNames,SourceRows,SourceSums,SourceCRC
     for(i=1;i<n;i+=1)
         if(Theta[i]-Theta[i-1]<1e-8)
-            Abort "Duplicate scan angle."
+            MM_Fail("Duplicate scan angle.")
         endif
     endfor
     // Envelope of actual sampling. Unmeasured pixels remain NaN at each energy.
@@ -146,7 +180,7 @@ Function MM_Run(source, destination, cuts, expectedTheta, low, high, nx, ny, exp
             for(j=0;j<nd;j+=1)
                 beta=(center-d0-dd*j+phi0-poff)*pi/180
                 if(abs(beta)>=pi/2 || abs(t)>=pi/2)
-                    Abort "Geometry outside supported inverse branches."
+                    MM_Fail("Geometry outside supported inverse branches.")
                 endif
                 kx=k0*sin(beta); ky=k0*sin(t)*cos(beta)
                 xv=kx*cos(rotation*pi/180)-ky*sin(rotation*pi/180)
@@ -157,7 +191,7 @@ Function MM_Run(source, destination, cuts, expectedTheta, low, high, nx, ny, exp
         endfor
     endfor
     if(xmax<=xmin || ymax<=ymin || ne*nx*ny>20000000)
-        Abort "Degenerate or excessive target grid."
+        MM_Fail("Degenerate or excessive target grid.")
     endif
     Make/D/N=(ne,nx,ny) EKxKy=NaN
     SetScale/P x e0,de,"eV",EKxKy
@@ -188,7 +222,9 @@ Function MM_Run(source, destination, cuts, expectedTheta, low, high, nx, ny, exp
             if(valid)
                 FermiSurface[ix][iy]=total
             endif
-            ZeroEnergySlice[ix][iy]=interp3D(EKxKy,0,xmin+ix*(xmax-xmin)/(nx-1),ymin+iy*(ymax-ymin)/(ny-1))
+            if(e0<=0 && e0+de*(ne-1)>=0)
+                ZeroEnergySlice[ix][iy]=interp3D(EKxKy,0,xmin+ix*(xmax-xmin)/(nx-1),ymin+iy*(ymax-ymin)/(ny-1))
+            endif
         endfor
     endfor
     // Round-trip every 20th detector point at first/middle/last energy.
@@ -205,14 +241,19 @@ Function MM_Run(source, destination, cuts, expectedTheta, low, high, nx, ny, exp
                 yv=kx*sin(rotation*pi/180)+ky*cos(rotation*pi/180)
                 actual=MM_Pixel(ev,xv,yv,source,Theta,Names,hv,workf,lc,toff,poff,phi0,rotation,center)
                 if(numtype(actual)!=0)
-                    Abort "Forward/inverse geometry round-trip returned non-finite intensity."
+                    MM_Fail("Forward/inverse geometry round-trip returned non-finite intensity.")
                 endif
                 residual=max(residual,abs(actual-check[ee][j]))
             endfor
         endfor
+        // Parallel floating-point sums can differ by ~1e-6 for an ~8e6 sum.
+        // CRC compares the actual data bytes, independent of reduction order.
+        if(WaveCRC(0,check)!=SourceCRC[i])
+            MM_Fail("Source intensity changed during conversion.")
+        endif
         WaveStats/Q check
-        if(abs(V_sum-SourceSums[i])>1e-6)
-            Abort "Source intensity changed during conversion."
+        if(residual>1e-7*max(1,max(abs(V_max),abs(V_min))))
+            MM_Fail("Forward/inverse intensity error exceeds tolerance.")
         endif
     endfor
     Variable/G RoundtripMaxAbs=residual

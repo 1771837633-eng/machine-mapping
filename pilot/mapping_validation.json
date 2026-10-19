@@ -1,0 +1,96 @@
+{
+  "validated_on": "2026-10-19",
+  "timezone": "Asia/Shanghai",
+  "scope": "Existing processed CUT pilot: panel -> selected existing 64-bit Igor -> memory results -> actual receipt. New raw-file acquisition/preprocessing and physical calibration are not validated.",
+  "git_baseline": "470f468948165c7045314eba5281058cf164ac01",
+  "igor": {
+    "executable": "D:/Applications/Igor Pro 9.0.5.1/Igor Pro 9 Folder/IgorBinaries_x64/Igor64.exe",
+    "version": "9.05",
+    "build": 56551,
+    "commit": "f98741bd73",
+    "kind": "pro64",
+    "new_instance_launched": false,
+    "original_procedures_modified": false,
+    "experiment_or_scientific_data_saved": false
+  },
+  "input": {
+    "external_source": "D:/SynologyDrive/SJJiang/SynologyDrive/DATA_FeSe_Jiajunjie/FeSe20211118_JJJ.pxp",
+    "project_copy": "pilot/input/FeSe20211118_JJJ_current.pxp",
+    "size": 511585161,
+    "source_and_copy_sha256_rechecked_at_end": "81dd8282998b672c9c4d5aaf24e19098f3e9826eaefdad60d87184fa1b61d5da",
+    "data_committed": false,
+    "angle_confirmation": "pilot/angle_confirmation.json",
+    "cuts": [
+      {"original": "A20211118121854", "theta": 0, "processed": "F1t0O0PP0PT0PV0P_0"},
+      {"original": "A20211118123854", "theta": -3, "processed": "F1t0O0PP0PT30NV0P_0"},
+      {"original": "A20211118130449", "theta": -6, "processed": "F1t0O0PP0PT60NV0P_0"},
+      {"original": "A20211118133047", "theta": -9, "processed": "F1t0O0PP0PT90NV0P_0"},
+      {"original": "A20211118135051", "theta": -12, "processed": "F1t0O0PP0PT120NV0P_0"},
+      {"original": "A20211118141230", "theta": -15, "processed": "F1t0O0PP0PT150NV0P_0"}
+    ],
+    "processed_shape_per_cut": [201, 642],
+    "energy_bounds_eV": [-0.0125, 0.0075],
+    "geometry_read_from_pxp_not_independently_calibrated": {
+      "PhotonEnergy": 6.994, "WorkFunction": 4.8, "LatticeConstant": 3.68,
+      "ThetaOffset": 0, "PhiOffset": 0, "RotationAngle": 0,
+      "DetectorCenterAngle": 0, "common_phi": 0, "common_bias": 0
+    }
+  },
+  "code_sha256": {
+    "igor/MMMomentum.ipf": "09a7830ce61ea0027e342c96311d858da882828352c238c963e2f23475938dcc",
+    "igor/MMNotebookBridge.ipf": "d9dffbc8f568a3b39a8761c76dba163283deae97878f47929691f269eb5f1680",
+    "igor/MMMappingSelfTest.ipf": "3532719375a937524f80a818fcb3b27b0fec1775b20bba726c2a4d688b522de1"
+  },
+  "legacy_geometry_reference": {
+    "file": "D:/Applications/Igor Pro 9.0.5.1/Igor Pro 9 Folder/User Procedures/Xingjiang_IOP/Latest/16XJZGetEKxKyIntensityTable.ipf",
+    "sha256": "b39e09d4ecf6666695baebf830d45ef7b7474bba5cb39c4a707a1b3900c30e54",
+    "limitations": "New inverse uses pi for angle conversion while legacy uses 3.1416. Original Proc was read, not executed for pixel comparison. No equivalence claimed with the separate biased GetFS/Jacobian/Omega path."
+  },
+  "successful_panel_job": {
+    "id": "047ccb3bab4846e3",
+    "status": "memory_complete",
+    "result_folder": "root:MMResults:j047ccb3bab4846e3",
+    "shape_E_kx_ky": [201, 121, 81],
+    "axes_units": ["eV relative to EF", "pi/a", "pi/a"],
+    "integration_eV": [-0.005, 0.005],
+    "integration_window_scientifically_confirmed": false,
+    "finite": 1902059,
+    "nan": 67942,
+    "total": 1970001,
+    "roundtrip_max_abs_intensity": 2.0605739337042905e-12,
+    "six_source_data_crc_unchanged": true,
+    "waves": ["EKxKy", "Coverage", "FermiSurface", "ZeroEnergySlice", "Theta", "Names", "OriginalNames", "SourceRows", "SourceSums", "SourceCRC"],
+    "receipt_not_in_git": "local/igor-bridge/047ccb3bab4846e3.receipt.txt",
+    "memory_only": true
+  },
+  "small_grid_trial": {
+    "result_folder": "root:MMResults:pilot20261019b",
+    "shape": [201, 41, 31], "finite": 235126, "nan": 20345,
+    "roundtrip_max_abs_intensity": 2.0605739337042905e-12
+  },
+  "native_selftest": {
+    "command": "MMMapping#MM_SelfTest(\"selftest20261019a\")",
+    "marker": "MM_SELFTEST_PASS: rotated interpolation; NaN coverage; shuffled CUT identity; analytic clipped integral; EF slice; CRC; invalid angle; restored folder",
+    "analytic_integral_max_abs_error": 0,
+    "finite_integral_pixels": 97
+  },
+  "actual_failures": [
+    {"trial": "pilot20261019", "cause": "Floating sum check false positive: ~8.236e6 sum changed by 1.502e-6 on repeat. Replaced by source-data CRC; partial trial output is not accepted."},
+    {"job": "d3717d2442e541f5", "cause": "NewDataFolder trailing colon in newly written bridge. Corrected with RemoveEnding; real failure receipt retained."},
+    {"job": "2ebd0b8730b74e77", "expected_rejection": true, "integration_eV": [-0.005, 0.01], "error": "Integration window is outside processed energy coverage."}
+  ],
+  "notebook_qa": {
+    "db_not_in_git": "local/trial-notebook.sqlite3",
+    "records": 7,
+    "nonexperimental_record": "界面验证记录（非实验数据）",
+    "normal_record_saved_after_native_failure": true,
+    "actual_http_xlsx_independently_read_by_openpyxl": true,
+    "xlsx_not_in_git": "local/qa-export-current.xlsx",
+    "sheets": ["实验记录", "实验条件"],
+    "record_sheet_rows_including_header": 8,
+    "columns": 37,
+    "numeric_theta_zero_and_test_temperature_15_verified": true,
+    "formula_cells": 0,
+    "native_excel_layout_not_tested": true
+  }
+}

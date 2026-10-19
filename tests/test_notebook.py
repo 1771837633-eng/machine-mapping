@@ -18,7 +18,9 @@ from app.server import create_server, job_commands, scan_manifest
 
 class NotebookTests(unittest.TestCase):
     def setUp(self):
-        self.tmp=tempfile.TemporaryDirectory()
+        temp_root=Path(__file__).resolve().parents[1]/'local'/'tests'
+        temp_root.mkdir(parents=True,exist_ok=True)
+        self.tmp=tempfile.TemporaryDirectory(dir=temp_root)
         self.path=Path(self.tmp.name)
         self.store=Store(self.path/'notebook.sqlite3')
 
@@ -69,6 +71,9 @@ class NotebookTests(unittest.TestCase):
         self.assertNotIn('Save',json.dumps(commands))
         self.assertIn('6.994',commands['run'])
         self.assertNotIn('/O',commands['load'])
+        for grid in (3.5,float('inf')):
+            with self.assertRaises(ValueError):
+                scan_manifest(records,'scan1',dict(config,nx=grid))
 
     def test_xlsx_all_fields_zero_blank_unicode_and_formula_text(self):
         record={'file_name':'=1+1','processing':'其他','x':0,'temperature':9.1,
@@ -102,7 +107,7 @@ class NotebookTests(unittest.TestCase):
             with self.assertRaises(urllib.error.HTTPError) as error:
                 request('/api/record',{'file_name':'unauthorized'})
             self.assertEqual(error.exception.code,403)
-            with patch('app.server.dispatch',side_effect=RuntimeError('Igor unavailable')):
+            with patch('app.igor_bridge.IgorBridge.submit',side_effect=RuntimeError('Igor unavailable')):
                 request('/api/run',{'scan_id':'scan1','low':-.005,'high':.005},token)
                 # Join work by waiting for the persistent job state, bounded to 2s.
                 import time
