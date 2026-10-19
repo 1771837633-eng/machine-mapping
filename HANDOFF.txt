@@ -17,9 +17,12 @@ SQLite完整性ok，7记录/3任务；Python9项测试、编译/JS语法检查�
 提交前9项Python测试、JS语法和diff检查再次通过；历史原生科学验证见下文和validation JSON。
 此前自动审批多次因Selected model is at capacity未执行，现最新“再git一下”时审批已恢复。
 本次git fetch已实际执行，但GitHub的443端口连接超时（curl 28），无法确认远端最新分支。
-已实际完成本地提交，随后git push origin HEAD:main同样因连接github.com:443超时失败。
-本轮未成功推送，未核验实时远端HEAD；不是审批容量故障或凭据被拒。系统当前没有启用代理，
-本轮没有修改网络/代理设置。另一台可访问GitHub的电脑可从同一仓库继续fetch核对后正常push。
+上述首次本地提交后，push曾因github.com:443超时失败。随后用户询问原因，本轮只读诊断时
+正常网络环境的github.com、api.github.com、microsoft.com均返回HTTP200，DNS正常；
+git ls-remote实际读到远端470f468，继而正常push已成功将main更新至ec21fb3。
+后续文档提交记录此次恢复，精确HEAD用git log -1查询，并须用实时ls-remote核对。
+具体中断根因不能仅凭现有日志确认，当前没有证据是项目代码/仓库权限问题。
+系统没有启用代理，本轮未修改网络、代理、安全设置，也未操作登录界面。
 接手时用git status、git log和git ls-remote核实当前实际状态，不把缓存origin/main当作实时远端。
 继续允许通过共享目录直接接手，无须等待GitHub恢复。不得绕过审批，禁止上传原数据或凭据。
 本次提交沿用既有作者1771837633-eng <1771837633-eng@users.noreply.github.com>的单次git -c参数，
@@ -149,7 +152,7 @@ XJZProcess/XJZNewImg会重建全局处理表/删处理Wave，本轮未调用。
 6. 验证、既有改动与下一步
 最终Python/JS/diff验证见PROGRESS.txt；精确代码/数据版本和实际回执见validation JSON。
 科学结果只在Igor内存；数据库、回执、Excel QA和截图在忽略目录local，不进Git。
-功能快照34d83fe已保存上述完整进展，后续文档提交记录了推送网络失败；按开头说明核查状态。
+功能快照34d83fe已保存上述完整进展，后续文档提交记录了网络失败及恢复推送；按开头核查状态。
 保留前一工作线未提交的igor/compatibility、build_igor_compatibility.py、
 capture_igor_procedures.py和start_legacy_igor.cmd，不删除/重写其已有成果。
 本次Git整理已给igor/compatibility/README.txt添加历史范围和最新用户约束说明，未运行旧工具。
